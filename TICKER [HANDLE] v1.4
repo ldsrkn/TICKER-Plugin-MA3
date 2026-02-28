@@ -1,0 +1,881 @@
+-- ============================================================
+-- TICKER HANDLE v1.4 — nsYde / GrandMA3 Lua Plugin
+-- Pixel text scroller for LED matrix via Programmer
+-- Requires: fixtures selected in Selection Grid before launch
+-- UI-only mode: no GlobalVars, no toggle stop
+-- ============================================================
+
+-- ============================================================
+-- SECTION 1: BITMAP FONT 5x5 (nsYde Ticker v1.4)
+-- Format: table of 5 columns, each column = {row1..row5}, row1=top
+-- All glyphs designed on 5x5 grid, readable at any scale multiple of 5
+
+local function G(rows)
+    local cols = {{},{},{},{},{}}
+    for r = 1, 5 do
+        local row = rows[r]
+        for c = 1, 5 do cols[c][r] = tonumber(row:sub(c,c)) or 0 end
+    end
+    return cols
+end
+
+local FONT = {}
+
+-- DIGITS
+FONT[48] = G{"01110","10001","10001","10001","01110"} -- 0
+FONT[49] = G{"00100","01100","00100","00100","01110"} -- 1
+FONT[50] = G{"01110","10001","00110","01000","11111"} -- 2
+FONT[51] = G{"01110","00001","00110","00001","01110"} -- 3
+FONT[52] = G{"00010","00110","01010","11111","00010"} -- 4
+FONT[53] = G{"11111","10000","11110","00001","11110"} -- 5
+FONT[54] = G{"01110","10000","11110","10001","01110"} -- 6
+FONT[55] = G{"11111","00001","00010","00100","00100"} -- 7
+FONT[56] = G{"01110","10001","01110","10001","01110"} -- 8
+FONT[57] = G{"01110","10001","01111","00001","01110"} -- 9
+
+-- PUNCTUATION & SYMBOLS
+FONT[32] = G{"00000","00000","00000","00000","00000"} -- SPC
+FONT[33] = G{"00100","00100","00100","00000","00100"} -- !
+FONT[34] = G{"01010","01010","00000","00000","00000"} -- "
+FONT[35] = G{"01010","11111","01010","11111","01010"} -- #
+FONT[36] = G{"01110","10100","01110","00101","01110"} -- $
+FONT[37] = G{"11000","11001","00010","10011","00011"} -- %
+FONT[38] = G{"01100","10010","01100","10010","01101"} -- &
+FONT[39] = G{"00100","00100","00000","00000","00000"} -- '
+FONT[40] = G{"00110","01000","01000","01000","00110"} -- (
+FONT[41] = G{"01100","00010","00010","00010","01100"} -- )
+FONT[42] = G{"00000","10101","01110","10101","00000"} -- *
+FONT[43] = G{"00000","00100","01110","00100","00000"} -- +
+FONT[44] = G{"00000","00000","00000","00100","01000"} -- ,
+FONT[45] = G{"00000","00000","11111","00000","00000"} -- -
+FONT[46] = G{"00000","00000","00000","00000","00100"} -- .
+FONT[47] = G{"00001","00010","00100","01000","10000"} -- /
+FONT[58] = G{"00000","00100","00000","00100","00000"} -- :
+FONT[59] = G{"00000","00100","00000","00100","01000"} -- ;
+FONT[60] = G{"00110","01000","10000","01000","00110"} -- <
+FONT[61] = G{"00000","11111","00000","11111","00000"} -- =
+FONT[62] = G{"01100","00010","00001","00010","01100"} -- >
+FONT[63] = G{"01110","10001","00110","00000","00100"} -- ?
+FONT[64] = G{"01110","10001","10111","10110","01110"} -- @
+FONT[91] = G{"01110","01000","01000","01000","01110"} -- [
+FONT[92] = G{"10000","01000","00100","00010","00001"} -- \
+FONT[93] = G{"01110","00010","00010","00010","01110"} -- ]
+FONT[94] = G{"00100","01010","10001","00000","00000"} -- ^
+FONT[95] = G{"00000","00000","00000","00000","11111"} -- _
+FONT[125] = G{"01100","00100","00110","00100","01100"} -- }
+FONT[123] = G{"00110","00100","01100","00100","00110"} -- {
+
+-- UPPERCASE LATIN
+FONT[65] = G{"01110","10001","11111","10001","10001"} -- A
+FONT[66] = G{"11110","10001","11110","10001","11110"} -- B
+FONT[67] = G{"01111","10000","10000","10000","01111"} -- C
+FONT[68] = G{"11110","10001","10001","10001","11110"} -- D
+FONT[69] = G{"11111","10000","11110","10000","11111"} -- E
+FONT[70] = G{"11111","10000","11110","10000","10000"} -- F
+FONT[71] = G{"01111","10000","10011","10001","01111"} -- G
+FONT[72] = G{"10001","10001","11111","10001","10001"} -- H
+FONT[73] = G{"01110","00100","00100","00100","01110"} -- I
+FONT[74] = G{"00111","00010","00010","10010","01100"} -- J
+FONT[75] = G{"10001","10010","11100","10010","10001"} -- K
+FONT[76] = G{"10000","10000","10000","10000","11111"} -- L
+FONT[77] = G{"10001","11011","10101","10001","10001"} -- M
+FONT[78] = G{"10001","11001","10101","10011","10001"} -- N
+FONT[79] = G{"01110","10001","10001","10001","01110"} -- O
+FONT[80] = G{"11110","10001","11110","10000","10000"} -- P
+FONT[81] = G{"01110","10001","10101","10010","01101"} -- Q
+FONT[82] = G{"11110","10001","11110","10010","10001"} -- R
+FONT[83] = G{"01111","10000","01110","00001","11110"} -- S
+FONT[84] = G{"11111","00100","00100","00100","00100"} -- T
+FONT[85] = G{"10001","10001","10001","10001","01110"} -- U
+FONT[86] = G{"10001","10001","10001","01010","00100"} -- V
+FONT[87] = G{"10001","10001","10101","11011","10001"} -- W
+FONT[88] = G{"10001","01010","00100","01010","10001"} -- X
+FONT[89] = G{"10001","01010","00100","00100","00100"} -- Y
+FONT[90] = G{"11111","00010","00100","01000","11111"} -- Z
+
+-- LOWERCASE LATIN
+FONT[97]  = G{"00000","01110","10001","10001","01101"} -- a
+FONT[98]  = G{"10000","10000","11110","10001","11110"} -- b
+FONT[99]  = G{"00000","01110","10000","10000","01110"} -- c
+FONT[100] = G{"00001","00001","01111","10001","01111"} -- d
+FONT[101] = G{"00000","01110","10001","11110","01111"} -- e
+FONT[102] = G{"00110","01000","11100","01000","01000"} -- f
+FONT[103] = G{"00000","01110","10001","01111","00110"} -- g
+FONT[104] = G{"10000","10000","11110","10001","10001"} -- h
+FONT[105] = G{"00100","00000","00100","00100","00110"} -- i
+FONT[106] = G{"00010","00000","00010","00010","01100"} -- j
+FONT[107] = G{"10000","10010","11100","10010","10001"} -- k
+FONT[108] = G{"01100","00100","00100","00100","01110"} -- l
+FONT[109] = G{"00000","11011","10101","10101","10001"} -- m
+FONT[110] = G{"00000","11110","10001","10001","10001"} -- n
+FONT[111] = G{"00000","01110","10001","10001","01110"} -- o
+FONT[112] = G{"00000","11110","10001","11110","10000"} -- p
+FONT[113] = G{"00000","01111","10001","01111","00001"} -- q
+FONT[114] = G{"00000","10110","11000","10000","10000"} -- r
+FONT[115] = G{"00000","01110","11000","00111","11110"} -- s
+FONT[116] = G{"01000","11110","01000","01000","00110"} -- t
+FONT[117] = G{"00000","10001","10001","10001","01110"} -- u
+FONT[118] = G{"00000","10001","10001","01010","00100"} -- v
+FONT[119] = G{"00000","10001","10101","10101","01010"} -- w
+FONT[120] = G{"00000","10001","01010","01010","10001"} -- x
+FONT[121] = G{"00000","10001","01010","00100","01100"} -- y
+FONT[122] = G{"00000","11111","00110","01100","11111"} -- z
+
+-- UPPERCASE CYRILLIC
+FONT[0x0410] = G{"01110","10001","11111","10001","10001"} -- А
+FONT[0x0411] = G{"11111","10000","11110","10001","11110"} -- Б
+FONT[0x0412] = G{"11110","10001","11110","10001","11110"} -- В
+FONT[0x0413] = G{"11111","10000","10000","10000","10000"} -- Г
+FONT[0x0414] = G{"00110","01010","01010","01010","11111"} -- Д
+FONT[0x0415] = G{"11111","10000","11110","10000","11111"} -- Е
+FONT[0x0401] = G{"11111","10000","11110","10000","11111"} -- Ё→Е
+FONT[0x0416] = G{"10101","10101","01110","10101","10101"} -- Ж
+FONT[0x0417] = G{"11110","00001","01110","00001","11110"} -- З
+FONT[0x0418] = G{"10001","10011","10101","11001","10001"} -- И
+FONT[0x0419] = G{"10101","10011","10101","11001","10001"} -- Й
+FONT[0x041A] = G{"10001","10010","11100","10010","10001"} -- К
+FONT[0x041B] = G{"00111","01001","01001","01001","10001"} -- Л
+FONT[0x041C] = G{"10001","11011","10101","10001","10001"} -- М
+FONT[0x041D] = G{"10001","10001","11111","10001","10001"} -- Н
+FONT[0x041E] = G{"01110","10001","10001","10001","01110"} -- О
+FONT[0x041F] = G{"11111","10001","10001","10001","10001"} -- П
+FONT[0x0420] = G{"11110","10001","11110","10000","10000"} -- Р
+FONT[0x0421] = G{"01111","10000","10000","10000","01111"} -- С
+FONT[0x0422] = G{"11111","00100","00100","00100","00100"} -- Т
+FONT[0x0423] = G{"10001","10001","01111","00001","01110"} -- У
+FONT[0x0424] = G{"00100","01110","10101","01110","00100"} -- Ф
+FONT[0x0425] = G{"10001","01010","00100","01010","10001"} -- Х
+FONT[0x0426] = G{"10010","10010","10010","10010","11111"} -- Ц
+FONT[0x0427] = G{"10001","10001","01111","00001","00001"} -- Ч
+FONT[0x0428] = G{"10101","10101","10101","10101","11111"} -- Ш
+FONT[0x0429] = G{"10101","10101","10101","10111","11111"} -- Щ (simplified = Ш)
+FONT[0x042A] = G{"11000","01000","01110","01001","01110"} -- Ъ
+FONT[0x042B] = G{"10001","10001","11101","10011","11101"} -- Ы
+FONT[0x042C] = G{"10000","10000","11110","10001","11110"} -- Ь
+FONT[0x042D] = G{"11110","00001","01111","00001","11110"} -- Э
+FONT[0x042E] = G{"10111","10101","11101","10101","10111"} -- Ю
+FONT[0x042F] = G{"01111","10001","01111","01001","10001"} -- Я
+
+-- LOWERCASE CYRILLIC
+FONT[0x0430] = G{"00000","01110","10001","10001","01101"} -- а
+FONT[0x0431] = G{"01111","10000","11110","10001","01110"} -- б
+FONT[0x0432] = G{"11100","10100","11110","10010","11110"} -- в
+FONT[0x0433] = G{"00000","11110","10000","10000","10000"} -- г
+FONT[0x0434] = G{"00000","00110","01010","01010","11111"} -- д
+FONT[0x0435] = G{"00000","01110","11111","11000","01110"} -- е
+FONT[0x0451] = G{"00000","01110","11111","11000","01110"} -- ё→е
+FONT[0x0436] = G{"00000","10101","01110","10101","10101"} -- ж
+FONT[0x0437] = G{"00000","01110","00110","00001","01110"} -- з
+FONT[0x0438] = G{"00000","10001","10011","10101","11001"} -- и
+FONT[0x0439] = G{"00100","10001","10011","10101","11001"} -- й
+FONT[0x043A] = G{"00000","10001","10010","11110","10001"} -- к
+FONT[0x043B] = G{"00000","00111","01001","01001","10001"} -- л
+FONT[0x043C] = G{"00000","11011","10101","10101","10001"} -- м
+FONT[0x043D] = G{"00000","10001","11111","10001","10001"} -- н
+FONT[0x043E] = G{"00000","01110","10001","10001","01110"} -- о
+FONT[0x043F] = G{"00000","11111","10001","10001","10001"} -- п
+FONT[0x0440] = G{"00000","11110","10001","11110","10000"} -- р
+FONT[0x0441] = G{"00000","01111","10000","10000","01111"} -- с
+FONT[0x0442] = G{"00000","11111","00100","00100","00100"} -- т
+FONT[0x0443] = G{"00000","10001","10001","01110","00110"} -- у
+FONT[0x0444] = G{"00100","01110","10101","01110","00100"} -- ф
+FONT[0x0445] = G{"00000","10001","01010","01010","10001"} -- х
+FONT[0x0446] = G{"00000","10010","10010","10010","11111"} -- ц
+FONT[0x0447] = G{"00000","10001","10001","01111","00001"} -- ч
+FONT[0x0448] = G{"00000","10101","10101","10101","11111"} -- ш
+FONT[0x0449] = G{"00000","10101","10101","10111","11111"} -- щ (= ш)
+FONT[0x044A] = G{"00000","11000","01110","01001","01110"} -- ъ
+FONT[0x044B] = G{"00000","10001","11001","10101","11001"} -- ы
+FONT[0x044C] = G{"00000","10000","11110","10001","11110"} -- ь
+FONT[0x044D] = G{"00000","01110","00001","00111","01110"} -- э
+FONT[0x044E] = G{"00000","10111","11101","10101","10111"} -- ю
+FONT[0x044F] = G{"00000","01111","10001","01111","01001"} -- я
+
+-- ============================================================
+-- SECTION 2: UTF-8 DECODER
+-- Returns iterator over unicode codepoints
+-- ============================================================
+local function utf8_codes(s)
+    local pos = 1
+    return function()
+        if pos > #s then return nil end
+        local b = s:byte(pos)
+        local cp, len
+        if b < 0x80 then
+            cp, len = b, 1
+        elseif b < 0xE0 then
+            cp = ((b & 0x1F) << 6) | (s:byte(pos+1) & 0x3F)
+            len = 2
+        elseif b < 0xF0 then
+            cp = ((b & 0x0F) << 6 | (s:byte(pos+1) & 0x3F)) << 6 | (s:byte(pos+2) & 0x3F)
+            len = 3
+        else
+            cp = 0x3F; len = 4
+        end
+        pos = pos + len
+        return cp
+    end
+end
+
+-- ============================================================
+-- SECTION 3: TEXT -> PIXEL BITMAP
+-- Returns array of columns, each column = {row1..row_h}
+-- Font native: 5x5, 1px inter-character gap
+-- If grid_h != 5: scale with nearest-neighbor
+-- ============================================================
+local FONT_H_NATIVE = 5
+local FONT_W_NATIVE = 5
+local CHAR_GAP      = 1
+
+local function text_to_bitmap(text, grid_h)
+    local out_h = grid_h
+    local gap_col = {}
+    for r = 1, out_h do gap_col[r] = 0 end
+
+    local cols = {}
+    for cp in utf8_codes(text) do
+        local glyph = FONT[cp] or FONT[63]  -- fallback '?'
+        for c = 1, FONT_W_NATIVE do
+            local src_col = glyph[c]  -- {row1..row5}
+            local col_bits = {}
+            for r = 1, out_h do
+                -- nearest-neighbor vertical scaling
+                local src_r
+                if out_h == FONT_H_NATIVE then
+                    src_r = r
+                else
+                    src_r = math.floor((r - 0.5) * FONT_H_NATIVE / out_h) + 1
+                    src_r = math.max(1, math.min(FONT_H_NATIVE, src_r))
+                end
+                col_bits[r] = src_col[src_r] or 0
+            end
+            cols[#cols + 1] = col_bits
+        end
+        cols[#cols + 1] = gap_col  -- inter-character gap
+    end
+    return cols, #cols
+end
+
+-- ============================================================
+-- SECTION 4: WAVEFORM FUNCTIONS
+-- Input: t in [0,1], Output: in [0,1]
+-- ============================================================
+local PI = math.pi
+
+local function wave_sine(t)
+    return 0.5 - 0.5 * math.cos(t * 2 * PI)
+end
+
+local function wave_tri_slow_attack(t)  -- slow rise, fast fall (sawtooth-ish)
+    if t < 0.75 then
+        return t / 0.75
+    else
+        return 1.0 - (t - 0.75) / 0.25
+    end
+end
+
+local function wave_tri_fast_attack(t)  -- fast rise, slow fall
+    if t < 0.25 then
+        return t / 0.25
+    else
+        return 1.0 - (t - 0.25) / 0.75
+    end
+end
+
+local function wave_square(t)
+    return t < 0.5 and 1.0 or 0.0
+end
+
+local WAVEFORMS = {
+    wave_sine,
+    wave_tri_slow_attack,
+    wave_tri_fast_attack,
+    wave_square,
+}
+
+-- ============================================================
+-- SECTION 5: SELECTION GRID READER
+-- SelectionFirst() and SelectionNext() return 4 values:
+--   handle, x, y, z  -- where x,y are coordinates in Selection Grid
+-- GetSubfixture(handle):ToAddr() -> "Fixture X.Y"
+-- Build fid_map[col][row] = "X.Y"
+-- ============================================================
+local function read_selection_grid()
+    if SelectionCount() == 0 then return nil, nil, 0, 0 end
+
+    local fid_map  = {}
+    local flat     = {}
+    local min_x, max_x = math.huge, -math.huge
+    local min_y, max_y = math.huge, -math.huge
+
+    -- First pass: collect all coordinates for normalization
+    local entries = {}
+    local sf_handle, x, y, z = SelectionFirst()
+    while sf_handle do
+        local sf = GetSubfixture(sf_handle)
+        if sf then
+            local addr = sf:ToAddr()
+            local fid  = addr and tostring(addr):match("(%d+%.%d+)")
+            if fid then
+                entries[#entries+1] = {fid=fid, x=x, y=y}
+                if x < min_x then min_x = x end
+                if x > max_x then max_x = x end
+                if y < min_y then min_y = y end
+                if y > max_y then max_y = y end
+            end
+        end
+        sf_handle, x, y, z = SelectionNext(sf_handle)
+    end
+
+    if #entries == 0 then
+        ErrPrintf("[TICKER] No subfixtures with FID found in Selection Grid")
+        return nil, nil, 0, 0
+    end
+
+    local cols = max_x - min_x + 1
+    local rows = max_y - min_y + 1
+
+    for _, e in ipairs(entries) do
+        local col = e.x - min_x
+        local row = e.y - min_y  -- font: row1=top, MA3 y=0 is also top
+        if not fid_map[col] then fid_map[col] = {} end
+        fid_map[col][row] = e.fid
+        flat[#flat+1] = {col=col, row=row, fid=e.fid}
+    end
+
+    Printf(string.format("[TICKER] Grid: %dx%d, pixels: %d, sample: %s",
+        cols, rows, #entries, (flat[1] and flat[1].fid) or "none"))
+    return fid_map, flat, cols, rows
+end
+
+-- ============================================================
+-- SECTION 6: PROGRAMMER WRITER (Cmd-based)
+-- fid_map[col][row] = "X.Y" (subfixture FID)
+-- frame[col][row]   = brightness 0.0..1.0
+-- prev_frame        = previous frame for diff (changed pixels only)
+-- Send only pixels whose value has changed (+/-1%)
+-- ============================================================
+local BRIGHTNESS_STEPS = 100  -- quantize to integer percent
+
+local function write_frame(fid_map, frame, prev_frame, grid_w, grid_h)
+    for col = 0, grid_w - 1 do
+        local fcol  = fid_map[col]
+        local ncol  = frame[col]
+        local pcol  = prev_frame and prev_frame[col]
+        if fcol and ncol then
+            for row = 0, grid_h - 1 do
+                local fid = fcol[row]
+                if fid then
+                    local v_new = math.floor((ncol[row] or 0) * BRIGHTNESS_STEPS + 0.5)
+                    local v_old = pcol and math.floor((pcol[row] or 0) * BRIGHTNESS_STEPS + 0.5)
+                    if v_new ~= v_old then
+                        Cmd('Fixture ' .. fid .. ' At ' .. v_new)
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- ============================================================
+-- SECTION 7: FRAME RENDERER
+-- scroll_pos: float px, current scroll position
+-- direction: 1=l-r, 2=r-l, 3=c-o, 4=c-i, 5=c-o/2, 6=c-i/2, 7=all
+-- sym_h: character height in pixels
+-- v_offset: vertical offset for centering character in grid
+-- fx_speed: waveform speed (0=off)
+-- ============================================================
+local function render_frame(text_cols, text_w, scroll_pos, direction,
+                             wave_fn, bright_lo, bright_hi,
+                             grid_w, grid_h, sym_h, v_offset, fx_speed, fx_time,
+                             text_gap_w)
+    local frame = {}
+    for x = 0, grid_w - 1 do
+        frame[x] = {}
+        for y = 0, grid_h - 1 do frame[x][y] = 0 end
+    end
+
+    local bright_range = bright_hi - bright_lo
+
+    -- Helper: get pixel bit from text columns
+    -- with sub-pixel interpolation along X and vertical offset
+    local function get_bit(tc_f, row)
+        local tc0 = math.floor(tc_f) % text_w
+        local tc1 = (tc0 + 1) % text_w
+        local frac = tc_f - math.floor(tc_f)
+        local col0 = text_cols[tc0 + 1]
+        local col1 = text_cols[tc1 + 1]
+        -- row is 0-based in character coordinates (0..sym_h-1)
+        local b0 = (col0 and col0[row + 1]) or 0
+        local b1 = (col1 and col1[row + 1]) or 0
+        return b0 * (1.0 - frac) + b1 * frac
+    end
+
+    -- Helper: pixel brightness with waveform applied
+    -- wave_t: wave phase 0..1
+    local function get_bright(wave_t)
+        if bright_range < 0.001 then return bright_lo end
+        local wave = wave_fn(wave_t % 1.0)
+        return bright_lo + bright_range * wave
+    end
+
+    -- Render single grid pixel (gx, gy) at text position tc_f
+    -- fx_phase: wave effect phase for this pixel
+    local function render_pixel(gx, gy, tc_f, fx_phase)
+        -- gy in grid coordinates -> row in character coordinates
+        local sym_row = gy - v_offset
+        if sym_row < 0 or sym_row >= sym_h then return end
+        local bit = get_bit(tc_f, sym_row)
+        if bit > 0.5 then
+            frame[gx][gy] = get_bright(fx_phase)
+        end
+    end
+
+    if direction == 7 then
+        -- all: entire grid pulses as one
+        local wave_t = scroll_pos * fx_speed * 0.01
+        local bright = get_bright(wave_t)
+        for x = 0, grid_w - 1 do
+            for y = 0, grid_h - 1 do
+                frame[x][y] = bright
+            end
+        end
+        return frame
+    end
+
+    if direction == 1 or direction == 2 then
+        -- l-r / r-l: horizontal scroll
+        local offset = (direction == 2) and scroll_pos or (-scroll_pos)
+        for x = 0, grid_w - 1 do
+            local tc_f = x + offset
+            -- wave travels opposite to text direction:
+            -- r-l (dir=2): text ->left,  wave ->right = (1 - x/grid_w)
+            -- l-r (dir=1): text ->right, wave ->left  = x/grid_w
+            local spatial = (direction == 2) and (1.0 - x / grid_w) or (x / grid_w)
+            local fx_phase = (fx_speed > 0) and (fx_time + spatial) or 0
+            for y = 0, grid_h - 1 do
+                render_pixel(x, y, tc_f, fx_phase)
+            end
+        end
+
+    elseif direction == 3 then
+        -- c-o: text expands from center -> wave converges to center
+        local mid = grid_w / 2
+        local half_w = math.ceil(mid)
+
+        for x = 0, grid_w - 1 do
+            local dist = x < mid and (mid - 1 - x) or (x - mid)
+            local tc_f
+            if x < mid then
+                tc_f = (half_w - 1 - x) - scroll_pos
+            else
+                tc_f = (x - math.floor(mid)) - scroll_pos
+            end
+            -- wave travels from edges to center (counter to text)
+            local fx_phase = (fx_speed > 0) and (fx_time + (1.0 - dist / mid)) or 0
+            for y = 0, grid_h - 1 do
+                render_pixel(x, y, tc_f, fx_phase)
+            end
+        end
+
+    elseif direction == 4 then
+        -- c-i: text converges to center -> wave expands from center
+        local mid = grid_w / 2
+        local half_w = math.ceil(mid)
+
+        for x = 0, grid_w - 1 do
+            local dist = x < mid and (mid - 1 - x) or (x - mid)
+            local tc_f
+            if x < mid then
+                tc_f = (half_w - 1 - x) + scroll_pos
+            else
+                tc_f = (x - math.floor(mid)) + scroll_pos
+            end
+            -- wave travels from center to edges (counter to text)
+            local fx_phase = (fx_speed > 0) and (fx_time + dist / mid) or 0
+            for y = 0, grid_h - 1 do
+                render_pixel(x, y, tc_f, fx_phase)
+            end
+        end
+
+    elseif direction == 5 then
+        local mid = grid_w / 2
+        local half_w = math.ceil(mid)
+        local pure_w = text_w - 2 * text_gap_w
+        local pure_l = math.floor(pure_w / 2)
+        local pure_r = pure_w - pure_l
+        local text_half = text_gap_w + pure_l
+        local right_hi  = text_half + pure_r
+
+        -- get_bit with wrap inside zone [lo, hi): tc1 stays within zone
+        local function get_bit_zone(tc_f, row, lo, hi)
+            local tc0  = math.floor(tc_f) % text_w
+            local frac = tc_f - math.floor(tc_f)
+            local tc1  = tc0 + 1; if tc1 >= hi then tc1 = lo end
+            local col0 = text_cols[tc0 + 1]; local col1 = text_cols[tc1 + 1]
+            local b0 = (col0 and col0[row + 1]) or 0
+            local b1 = (col1 and col1[row + 1]) or 0
+            return b0 * (1.0 - frac) + b1 * frac
+        end
+
+        for x = 0, grid_w - 1 do
+            local dist = x < mid and (mid - 1 - x) or (x - mid)
+            local fx_phase = (fx_speed > 0) and (fx_time + (1.0 - dist / mid)) or 0
+            if x < mid then
+                local raw = (half_w - 1 - x) - scroll_pos
+                local rel = raw % pure_l; if rel < 0 then rel = rel + pure_l end
+                local tc_f = text_half - 1 - rel
+                for y = 0, grid_h - 1 do render_pixel(x, y, tc_f, fx_phase) end
+            else
+                local raw = (x - math.floor(mid) - 1) - scroll_pos
+                local rel = raw % pure_r; if rel < 0 then rel = rel + pure_r end
+                local tc_f = text_half + rel
+                for y = 0, grid_h - 1 do
+                    local sym_row = y - v_offset
+                    if sym_row >= 0 and sym_row < sym_h then
+                        local bit = get_bit_zone(tc_f, sym_row, text_half, right_hi)
+                        if bit > 0.5 then frame[x][y] = get_bright(fx_phase) end
+                    end
+                end
+            end
+        end
+
+    elseif direction == 6 then
+        local mid = grid_w / 2
+        local half_w = math.ceil(mid)
+        local pure_w = text_w - 2 * text_gap_w
+        local pure_l = math.floor(pure_w / 2)
+        local pure_r = pure_w - pure_l
+        local text_half = text_gap_w + pure_l
+        local right_hi  = text_half + pure_r
+
+        local function get_bit_zone(tc_f, row, lo, hi)
+            local tc0  = math.floor(tc_f) % text_w
+            local frac = tc_f - math.floor(tc_f)
+            local tc1  = tc0 + 1; if tc1 >= hi then tc1 = lo end
+            local col0 = text_cols[tc0 + 1]; local col1 = text_cols[tc1 + 1]
+            local b0 = (col0 and col0[row + 1]) or 0
+            local b1 = (col1 and col1[row + 1]) or 0
+            return b0 * (1.0 - frac) + b1 * frac
+        end
+
+        for x = 0, grid_w - 1 do
+            local dist = x < mid and (mid - 1 - x) or (x - mid)
+            local fx_phase = (fx_speed > 0) and (fx_time + dist / mid) or 0
+            if x < mid then
+                local raw = (half_w - 1 - x) + scroll_pos
+                local rel = raw % pure_l; if rel < 0 then rel = rel + pure_l end
+                local tc_f = text_half - 1 - rel
+                for y = 0, grid_h - 1 do render_pixel(x, y, tc_f, fx_phase) end
+            else
+                local raw = (x - math.floor(mid) - 1) + scroll_pos
+                local rel = raw % pure_r; if rel < 0 then rel = rel + pure_r end
+                local tc_f = text_half + rel
+                for y = 0, grid_h - 1 do
+                    local sym_row = y - v_offset
+                    if sym_row >= 0 and sym_row < sym_h then
+                        local bit = get_bit_zone(tc_f, sym_row, text_half, right_hi)
+                        if bit > 0.5 then frame[x][y] = get_bright(fx_phase) end
+                    end
+                end
+            end
+        end
+
+    end
+
+    return frame
+end
+
+-- ============================================================
+-- SECTION 8: UI
+-- Window 1: reference card (MessageBox, OK button)
+-- Window 2: parameter table (MessageBox, inputs, Cancel/OK)
+-- ============================================================
+local HINT_TEXT =
+    "TICKER — PARAMETER REFERENCE\n" ..
+    "\n" ..
+    "grid_size   auto | WxH  (e.g. 64x8)\n" ..
+    "symbol_size auto | WxH  (e.g. 5x5)\n" ..
+    "text        any text: Latin / Cyrillic\n" ..
+    "direction   r-l | l-r | c-o | c-i | c-o/2 | c-i/2\n" ..
+    "              r-l   = right to left   (default)\n" ..
+    "              l-r   = left to right\n" ..
+    "              c-o   = center outward, text mirrored\n" ..
+    "              c-i   = edges inward, text mirrored\n" ..
+    "              c-o/2 = center outward, left/right halves\n" ..
+    "              c-i/2 = edges inward, left/right halves\n" ..
+    "loop        cycle (infinite) | shot (once)\n" ..
+    "run_speed   1-100  text scroll speed px/s\n" ..
+    "fx_speed    0-100  waveform speed (0=off)\n" ..
+    "waveform    sin | tri-u | tri-d | sqr\n" ..
+    "bright_lo   0-100  minimum brightness %\n" ..
+    "bright_hi   0-100  maximum brightness %\n" ..
+    "fps         15 | 20 | 25 | 30  frames/sec (rec. 15)\n" ..
+    "\n" ..
+    "Press OK -> parameter table will open."
+
+local DIR_CODES  = { ["r-l"]=2, ["l-r"]=1, ["c-o"]=3, ["c-i"]=4, ["c-o/2"]=5, ["c-i/2"]=6 }
+local WAVE_CODES = { ["sin"]=1, ["tri-u"]=2, ["tri-d"]=3, ["sqr"]=4 }
+
+local function show_ui(auto_w, auto_h)
+
+    -- ── Window 1: reference card ───────────────────────────────
+    local hint_result = MessageBox({
+        title    = "TICKER  —  Reference",
+        message  = HINT_TEXT,
+        commands = {
+            { value = 0, name = "Cancel" },
+            { value = 1, name = "OK" },
+        },
+    })
+    if not hint_result or hint_result.result ~= 1 then
+        Printf("[TICKER] Cancelled.")
+        return nil
+    end
+
+    -- ── Window 2: parameter table ──────────────────────────────
+    local grid_default = (auto_w and auto_h) and (auto_w .. "x" .. auto_h) or "auto"
+
+    local params_result = MessageBox({
+        title    = "TICKER  —  Parameters",
+        message  = "Select fixtures, enter values and press OK to launch.",
+        commands = {
+            { value = 0, name = "Cancel" },
+            { value = 1, name = "OK" },
+        },
+        inputs = {
+            { name = "01_grid_size",   value = grid_default },
+            { name = "02_symbol_size", value = "auto" },
+            { name = "03_text",        value = "TICKER by nsYde" },
+            { name = "04_direction",   value = "r-l" },
+            { name = "05_loop",        value = "cycle" },
+            { name = "06_run_speed",   value = "10",  whiteFilter = "0123456789" },
+            { name = "07_fx_speed",    value = "10",  whiteFilter = "0123456789" },
+            { name = "08_waveform",    value = "sin" },
+            { name = "09_bright_lo",   value = "100", whiteFilter = "0123456789" },
+            { name = "10_bright_hi",   value = "100", whiteFilter = "0123456789" },
+            { name = "11_fps",         value = "15",  whiteFilter = "0123456789" },
+        },
+    })
+
+    if not params_result or params_result.result ~= 1 then
+        Printf("[TICKER] Cancelled.")
+        return nil
+    end
+
+    local inp = params_result.inputs
+
+    -- ── Parse grid_size ────────────────────────────────────────
+    local grid_w, grid_h
+    local gs_raw = (inp["01_grid_size"] or "auto"):lower():match("^%s*(.-)%s*$")
+    if gs_raw == "auto" or gs_raw == "" then
+        grid_w, grid_h = auto_w, auto_h
+    else
+        local w, h = gs_raw:match("(%d+)x(%d+)")
+        grid_w = tonumber(w) or auto_w or 32
+        grid_h = tonumber(h) or auto_h or 8
+    end
+    if not grid_w or not grid_h then grid_w, grid_h = 32, 8 end
+
+    -- ── Parse symbol_size ──────────────────────────────────────
+    -- auto = font scales to fit grid_h
+    -- WxH  = fixed character size in pixels
+    local sym_w, sym_h
+    local ss_raw = (inp["02_symbol_size"] or "auto"):lower():match("^%s*(.-)%s*$")
+    if ss_raw ~= "auto" and ss_raw ~= "" then
+        local sw, sh = ss_raw:match("(%d+)x(%d+)")
+        sym_w, sym_h = tonumber(sw), tonumber(sh)
+    end
+
+    -- ── Parse text ─────────────────────────────────────────────
+    local text = (inp["03_text"] or ""):match("^%s*(.-)%s*$")
+    if text == "" then text = "Hello" end
+
+    -- ── Parse direction ────────────────────────────────────────
+    local dir_raw   = (inp["04_direction"] or "r-l"):lower():match("^%s*(.-)%s*$")
+    local direction = DIR_CODES[dir_raw]
+    if not direction then
+        ErrPrintf("[TICKER] invalid direction: '" .. dir_raw .. "', using r-l")
+        direction = 2
+    end
+
+    -- ── Parse loop ─────────────────────────────────────────────
+    local loop_raw  = (inp["05_loop"] or "cycle"):lower():match("^%s*(.-)%s*$")
+    local loop_mode = (loop_raw == "shot") and "once" or "infinite"
+
+    -- ── Parse speeds ───────────────────────────────────────────
+    local run_speed = math.max(1,   math.min(100, tonumber(inp["06_run_speed"]) or 10))
+    local fx_speed  = math.max(0,   math.min(100, tonumber(inp["07_fx_speed"])  or 10))
+    local fps_raw = tonumber(inp["11_fps"]) or 30
+    local fps_steps = {15, 20, 25, 30}
+    local fps = 30
+    for _, v in ipairs(fps_steps) do if v >= fps_raw then fps = v; break end end
+
+    -- ── Parse waveform ─────────────────────────────────────────
+    local wave_raw  = (inp["08_waveform"] or "sin"):lower():match("^%s*(.-)%s*$")
+    local wave_idx  = WAVE_CODES[wave_raw] or 1
+
+    -- ── Parse brightness ───────────────────────────────────────
+    local bright_lo = math.max(0, math.min(100, tonumber(inp["09_bright_lo"]) or 100))
+    local bright_hi = math.max(0, math.min(100, tonumber(inp["10_bright_hi"]) or 100))
+    if bright_lo > bright_hi then bright_lo, bright_hi = bright_hi, bright_lo end
+
+    return {
+        grid_w    = grid_w,  grid_h    = grid_h,
+        sym_w     = sym_w,   sym_h     = sym_h,
+        text      = text,    direction = direction,
+        loop_mode = loop_mode,
+        bright_lo = bright_lo / 100.0,
+        bright_hi = bright_hi / 100.0,
+        wave_fn   = WAVEFORMS[wave_idx],
+        wave_idx  = wave_idx,
+        run_speed = run_speed,
+        fx_speed  = fx_speed,
+        fps       = fps,
+    }
+end
+
+-- ============================================================
+-- SECTION 9: MAIN
+-- UI-only mode: always shows parameter dialog, no GlobalVars
+-- ============================================================
+local function Ticker(display_handle)
+
+    -- Read Selection Grid -> fid_map[col][row]="X.Y"
+    local fid_map, flat, auto_w, auto_h = read_selection_grid()
+    local preview_mode = (not fid_map or auto_w == 0)
+
+    local cfg = show_ui(
+        (not preview_mode) and auto_w or nil,
+        (not preview_mode) and auto_h or nil
+    )
+    if not cfg then return end
+
+    local grid_w = cfg.grid_w or auto_w or 32
+    local grid_h = cfg.grid_h or auto_h or 8
+
+    if preview_mode then
+        Printf("[TICKER] Preview mode " .. grid_w .. "x" .. grid_h)
+        fid_map = nil
+    end
+
+    -- Character height: manual or auto-scale to grid_h
+    local sym_h    = cfg.sym_h or grid_h
+    local v_offset = math.floor((grid_h - sym_h) / 2)  -- top offset when sym_h < grid_h
+
+    -- Text bitmap with leading padding
+    local text_cols = text_to_bitmap(cfg.text, sym_h)
+    local gap_col = {}
+    for r = 1, grid_h do gap_col[r] = 0 end
+    local full_cols = {}
+    for i = 1, grid_w do full_cols[#full_cols + 1] = gap_col end  -- leading gap
+    for _, c in ipairs(text_cols) do full_cols[#full_cols + 1] = c end
+    local text_w = #full_cols
+
+    -- For c-o/2 and c-i/2: extended bitmap with trailing gap for correct sub-pixel wrap
+    local full_cols_ext = {}
+    for _, c in ipairs(full_cols) do full_cols_ext[#full_cols_ext + 1] = c end
+    for i = 1, grid_w do full_cols_ext[#full_cols_ext + 1] = gap_col end  -- trailing gap
+    local text_w_ext = #full_cols_ext
+
+    -- For c-o/2 and c-i/2: scroll_pos period = LCM(pure_l, pure_r, grid_w * run/gcd(fx,run))
+    -- Guarantees seamless text and wave loop for any fx_speed
+    local function gcd(a, b) while b ~= 0 do a, b = b, a % b end return a end
+    local function lcm(a, b) return a * b // gcd(a, b) end
+    local ext_pure_w = #text_cols
+    local ext_pure_l = math.floor(ext_pure_w / 2)
+    local ext_pure_r = ext_pure_w - ext_pure_l
+    local ext_text_period = (ext_pure_l > 0 and ext_pure_r > 0)
+        and lcm(ext_pure_l, ext_pure_r) or text_w_ext  -- seamless text period
+    -- Wave period depends on fx_speed -- computed in on_tick
+
+    -- Animation state
+    local scroll_pos = 0.0
+    local running    = true
+    local last_time  = Time()
+    local cycle_done = false
+    local prev_frame = nil
+
+    local function on_tick()
+        if not running then return end
+
+        local now = Time()
+        local dt  = math.max(0, math.min(now - last_time, 0.1))
+        last_time = now
+
+        scroll_pos = scroll_pos + cfg.run_speed * dt
+
+        local use_ext  = (cfg.direction == 5 or cfg.direction == 6)
+        local render_w = use_ext and text_w_ext or text_w
+
+        -- Wrap period: for ext modes -- LCM(text, wave) so both loop seamlessly
+        local wrap_period
+        if use_ext and cfg.run_speed > 0 and cfg.fx_speed > 0 then
+            local g = gcd(cfg.fx_speed, cfg.run_speed)
+            local wave_p = grid_w * (cfg.run_speed // g)
+            wrap_period = lcm(ext_text_period, wave_p)
+        elseif use_ext then
+            wrap_period = ext_text_period
+        else
+            wrap_period = text_w
+        end
+
+        if cfg.loop_mode == "once" and scroll_pos >= render_w then
+            scroll_pos = render_w - 1
+            running    = false
+            cycle_done = true
+        elseif cfg.loop_mode == "infinite" then
+            scroll_pos = scroll_pos % wrap_period
+        end
+
+        -- fx_time: same formula as v1.2 for dir 1-4
+        -- wrap_period ensures integer number of wave cycles -> no phase jump at wrap
+        local fx_time = (cfg.run_speed > 0)
+            and (scroll_pos * (cfg.fx_speed / cfg.run_speed) / grid_w)
+            or  0
+
+        local frame = render_frame(
+            use_ext and full_cols_ext or full_cols,
+            render_w,
+            scroll_pos, cfg.direction,
+            cfg.wave_fn, cfg.bright_lo, cfg.bright_hi,
+            grid_w, grid_h, sym_h, v_offset, cfg.fx_speed, fx_time,
+            grid_w  -- text_gap_w
+        )
+
+        if fid_map then
+            write_frame(fid_map, frame, prev_frame, grid_w, grid_h)
+            prev_frame = frame
+        else
+            local line = ""
+            for col = 0, math.min(grid_w - 1, 47) do
+                line = line .. (((frame[col] and frame[col][0]) or 0) > 0.3 and "█" or "░")
+            end
+            Echo(line)
+        end
+
+        if cycle_done then
+            running = false
+            if fid_map then
+                local black = {}
+                for col = 0, grid_w - 1 do
+                    black[col] = {}
+                    for row2 = 0, grid_h - 1 do black[col][row2] = 0 end
+                end
+                write_frame(fid_map, black, prev_frame, grid_w, grid_h)
+            end
+            Printf("[TICKER] Shot complete.")
+        end
+    end
+
+    Timer(on_tick, 1.0 / cfg.fps)
+
+    Printf(string.format(
+        "[TICKER HANDLE] Start | '%s' | %dx%d | sym:%dx%d | dir:%d | %d px/s | fx:%d | wave:%d | %.0f-%.0f%%",
+        cfg.text, grid_w, grid_h, cfg.sym_w or FONT_W_NATIVE, sym_h, cfg.direction,
+        cfg.run_speed, cfg.fx_speed, cfg.wave_idx,
+        cfg.bright_lo * 100, cfg.bright_hi * 100
+    ))
+end
+
+return Ticker

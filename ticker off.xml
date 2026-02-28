@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<GMA3 DataVersion="2.3.2.0">
+    <Macro Name="TICKER OFF" Guid="65 60 53 11 2F EC B1 0A 4B EC 48 EC D4 37 B2 FE" Note="by nsYde">
+        <MacroLine Guid="65 60 53 11 77 62 E6 4B AC 57 91 DD D2 37 B2 FE" Command="Call Plugin 1 &quot;Ticker&quot;"/>
+        <MacroLine Guid="65 60 53 11 61 03 E5 40 EE 2F 24 C0 26 A6 02 FB" Command="Off Plugin 1 &quot;Ticker"/>
+        <MacroLine Guid="65 60 53 11 E2 07 BE 61 04 1A 55 B6 77 D8 00 E6" Command="ClearAll"/>
+    </Macro>
+</GMA3>
