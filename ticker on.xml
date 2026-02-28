@@ -4,7 +4,7 @@
         <MacroLine Guid="65 60 53 11 F3 73 9F 18 07 8F 17 ED 47 07 F3 5A" Command="SelectFixtures Group 1"/>
         <MacroLine Guid="65 60 53 11 C4 2E 8D 45 D2 00 2F E8 EF 59 E0 5B" Command="Lua &quot;SetVar(GlobalVars(),&apos;TICKER_GRID&apos;,&apos;auto&apos;)&quot;"/>
         <MacroLine Guid="65 60 53 11 84 7C 2E 4B 68 F3 5D DE 47 6A 84 45" Command="Lua &quot;SetVar(GlobalVars(),&apos;TICKER_SYM&apos;,&apos;auto&apos;)&quot;"/>
-        <MacroLine Guid="65 60 53 11 64 0E F8 1F 33 74 75 D9 EE 89 91 42" Command="Lua &quot;SetVar(GlobalVars(),&apos;TICKER_TEXT&apos;,&apos;ВЕСЬ ЭТОТ ЦИРКЪ!&apos;)&quot;"/>
+        <MacroLine Guid="65 60 53 11 64 0E F8 1F 33 74 75 D9 EE 89 91 42" Command="Lua &quot;SetVar(GlobalVars(),&apos;TICKER_TEXT&apos;,&apos;TICKER by nsYde&apos;)&quot;"/>
         <MacroLine Guid="65 60 53 11 A9 43 AE 13 FE ED 82 D4 AB 91 04 40" Command="Lua &quot;SetVar(GlobalVars(),&apos;TICKER_DIR&apos;,&apos;r-l&apos;)&quot;"/>
         <MacroLine Guid="65 60 53 11 AC D5 2D 1E 49 67 9A CF A6 D5 28 4E" Command="Lua &quot;SetVar(GlobalVars(),&apos;TICKER_LOOP&apos;,&apos;cycle&apos;)&quot;"/>
         <MacroLine Guid="65 60 53 11 5F F6 9C 25 DF 51 CB C5 13 84 94 4D" Command="Lua &quot;SetVar(GlobalVars(),&apos;TICKER_SPEED&apos;,&apos;10&apos;)&quot;"/>
